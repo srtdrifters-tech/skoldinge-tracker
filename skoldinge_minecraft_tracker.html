@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sköldinge Minecraft Coordinate Tracker</title>
+<style>
+body{font-family:system-ui,sans-serif;background:#111;color:#fff;display:grid;place-items:center;min-height:100vh;margin:0}
+.card{width:min(92vw,520px);background:#1b1b1b;border-radius:20px;padding:24px;box-sizing:border-box}
+h1{font-size:22px;margin:0 0 18px}.label{color:#aaa;font-size:13px}
+.coords{font-size:clamp(28px,8vw,48px);font-weight:800;margin:6px 0 18px;word-break:break-word}
+.status{margin-top:14px;color:#8cff9b}.err{color:#ff8c8c}
+button{width:100%;padding:14px;border:0;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer}
+small{color:#888}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>🌍 Sköldinge → Minecraft</h1>
+<div class="label">MINECRAFT ORIGIN</div>
+<div>Sköldinge: <b>X 0 · Z 0</b></div>
+<hr style="border-color:#333;margin:18px 0">
+<div class="label">CURRENT GPS</div>
+<div id="gps" class="coords">Waiting for GPS…</div>
+<div class="label">MINECRAFT COORDS</div>
+<div id="mc" class="coords">X: —<br>Z: —</div>
+<button id="start">Start live tracking</button>
+<div id="status" class="status">Not tracking</div>
+<p><small>Updates once per second while location permission is available.</small></p>
+</div>
+<script>
+const ORIGIN_LAT = 59.03274;
+const ORIGIN_LON = 16.43571;
+const METERS_PER_DEG_LAT = 111320;
+let timer = null;
+
+function update(position){
+  const lat = position.coords.latitude;
+  const lon = position.coords.longitude;
+
+  // Local east/west distance in meters.
+  const metersPerDegLon = 111320 * Math.cos(ORIGIN_LAT * Math.PI / 180);
+  const x = Math.round((lon - ORIGIN_LON) * metersPerDegLon);
+  // North = negative Z, South = positive Z.
+  const z = Math.round((ORIGIN_LAT - lat) * METERS_PER_DEG_LAT);
+
+  document.getElementById("gps").textContent =
+    `${lat.toFixed(6)}°, ${lon.toFixed(6)}°`;
+  document.getElementById("mc").innerHTML =
+    `X: ${x.toLocaleString()}<br>Z: ${z.toLocaleString()}`;
+  document.getElementById("status").textContent =
+    `🟢 LIVE · accuracy ±${Math.round(position.coords.accuracy)} m · ${new Date().toLocaleTimeString()}`;
+}
+
+function error(err){
+  document.getElementById("status").className = "status err";
+  document.getElementById("status").textContent =
+    "⚠️ Location unavailable: " + err.message;
+}
+
+function start(){
+  if(!navigator.geolocation){
+    document.getElementById("status").textContent = "This browser doesn't support GPS.";
+    return;
+  }
+  if(timer) clearInterval(timer);
+  const get = () => navigator.geolocation.getCurrentPosition(update, error, {
+    enableHighAccuracy:true, maximumAge:0, timeout:8000
+  });
+  get();
+  timer = setInterval(get, 1000);
+  document.getElementById("start").textContent = "Tracking…";
+}
+document.getElementById("start").addEventListener("click", start);
+</script>
+</body>
+</html>
